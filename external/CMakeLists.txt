@@ -42,5 +42,6 @@ MESSAGE("CONFIGURE_HOST = ${CONFIGURE_HOST}")
 # Include the projects in the subdirectories.
 #
 
+ADD_SUBDIRECTORY(lzma)
 ADD_SUBDIRECTORY(libxml2)
 ADD_SUBDIRECTORY(liblxi)

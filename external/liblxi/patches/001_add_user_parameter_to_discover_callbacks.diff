@@ -1,0 +1,205 @@
+diff -uNr liblxi-1.13/src/avahi.c liblxi-1.13_patched/src/avahi.c
+--- liblxi-1.13/src/avahi.c	2018-02-02 18:21:00.000000000 +0100
++++ liblxi-1.13_patched/src/avahi.c	2019-09-24 14:45:01.471919511 +0200
+@@ -47,6 +47,7 @@
+ static AvahiServiceBrowser *sb[10] = {};
+ static lxi_info_t *lxi_info;
+ static int timeout_discover = 0;
++static void *pvLxiInfoUser;
+ static int count = 0;
+ 
+ static void avahi_resolve_callback(
+@@ -91,7 +92,7 @@
+                     service_type = "hislip";
+ 
+                 avahi_address_snprint(a, sizeof(a), address);
+-                lxi_info->service(a, (char *) name, service_type, port);
++                lxi_info->service(a, (char *) name, service_type, port, pvLxiInfoUser);
+             }
+     }
+     avahi_service_resolver_free(r);
+@@ -152,7 +153,7 @@
+     return 0;
+ }
+ 
+-int avahi_discover_(lxi_info_t *info, int timeout)
++int avahi_discover_(lxi_info_t *info, int timeout, void *pvUser)
+ {
+     AvahiClient *client = NULL;
+     int status = 1;
+@@ -161,6 +162,7 @@
+     /* Setup callback structure and timeout for avahi service callback */
+     lxi_info = info;
+     timeout_discover = timeout * 1000;
++    pvLxiInfoUser = pvUser;
+ 
+     /* Allocate main loop object */
+     if (!(simple_poll = avahi_simple_poll_new()))
+@@ -210,16 +212,17 @@
+ {
+     lxi_info_t *info;
+     int timeout;
++    void *pvUser;
+ } data_t;
+ 
+ void *discover(void *userdata)
+ {
+     data_t *data = userdata;
+ 
+-    avahi_discover_(data->info, data->timeout);
++    avahi_discover_(data->info, data->timeout, data->pvUser);
+ }
+ 
+-int avahi_discover(lxi_info_t *info, int timeout)
++int avahi_discover(lxi_info_t *info, int timeout, void *pvUser)
+ {
+     struct timespec ts;
+     pthread_t thread;
+@@ -228,6 +231,7 @@
+ 
+     data.info = info;
+     data.timeout = timeout;
++    data.pvUser = pvUser;
+ 
+     if (clock_gettime(CLOCK_REALTIME, &ts) == -1)
+     {
+diff -uNr liblxi-1.13/src/include/avahi.h liblxi-1.13_patched/src/include/avahi.h
+--- liblxi-1.13/src/include/avahi.h	2017-11-18 21:28:02.000000000 +0100
++++ liblxi-1.13_patched/src/include/avahi.h	2019-09-24 14:40:34.719218289 +0200
+@@ -33,6 +33,6 @@
+ 
+ #include <lxi.h>
+ 
+-int avahi_discover(lxi_info_t *info, int timeout);
++int avahi_discover(lxi_info_t *info, int timeout, void *pvUser);
+ 
+ #endif
+diff -uNr liblxi-1.13/src/include/lxi.h liblxi-1.13_patched/src/include/lxi.h
+--- liblxi-1.13/src/include/lxi.h	2018-03-22 20:35:55.000000000 +0100
++++ liblxi-1.13_patched/src/include/lxi.h	2019-09-24 14:35:35.676041138 +0200
+@@ -40,9 +40,9 @@
+ 
+ typedef struct
+ {
+-    void (*broadcast)(const char *address, const char *interface);
+-    void (*device)(const char *address, const char *id);
+-    void (*service)(const char *address, const char *id, const char *service, int port);
++    void (*broadcast)(const char *address, const char *interface, void *pvUser);
++    void (*device)(const char *address, const char *id, void *pvUser);
++    void (*service)(const char *address, const char *id, const char *service, int port, void *pvUser);
+ } lxi_info_t;
+ 
+ typedef enum
+@@ -59,7 +59,7 @@
+ } lxi_discover_t;
+ 
+ int lxi_init(void);
+-int lxi_discover(lxi_info_t *info, int timeout, lxi_discover_t type);
++int lxi_discover(lxi_info_t *info, int timeout, lxi_discover_t type, void *pvUser);
+ int lxi_discover_if(lxi_info_t *info, const char* ifname, int timeout, lxi_discover_t type);
+ int lxi_connect(const char *address, int port, const char *name, int timeout, lxi_protocol_t protocol);
+ int lxi_send(int device, const char *message, int length, int timeout);
+diff -uNr liblxi-1.13/src/include/mdns.h liblxi-1.13_patched/src/include/mdns.h
+--- liblxi-1.13/src/include/mdns.h	2017-11-18 21:28:02.000000000 +0100
++++ liblxi-1.13_patched/src/include/mdns.h	2019-09-24 14:37:07.398277759 +0200
+@@ -31,6 +31,6 @@
+ #ifndef MDNS_H
+ #define MDNS_H
+ 
+-int mdns_discover(lxi_info_t *info, int timeout);
++int mdns_discover(lxi_info_t *info, int timeout, void *pvUser);
+ 
+ #endif
+diff -uNr liblxi-1.13/src/include/vxi11.h liblxi-1.13_patched/src/include/vxi11.h
+--- liblxi-1.13/src/include/vxi11.h	2018-03-24 12:47:33.000000000 +0100
++++ liblxi-1.13_patched/src/include/vxi11.h	2019-09-24 14:36:57.270030901 +0200
+@@ -44,6 +44,6 @@
+ int vxi11_disconnect(void *data);
+ int vxi11_send(void *data, const char *message, int length, int timeout);
+ int vxi11_receive(void *data, char *message, int length, int timeout);
+-int vxi11_discover(lxi_info_t *info, int timeout);
++int vxi11_discover(lxi_info_t *info, int timeout, void *pvUser);
+ 
+ #endif
+diff -uNr liblxi-1.13/src/lxi.c liblxi-1.13_patched/src/lxi.c
+--- liblxi-1.13/src/lxi.c	2018-03-24 12:47:33.000000000 +0100
++++ liblxi-1.13_patched/src/lxi.c	2019-09-24 14:34:47.554866693 +0200
+@@ -190,15 +190,15 @@
+     return bytes_received;
+ }
+ 
+-EXPORT int lxi_discover(lxi_info_t *info, int timeout, lxi_discover_t type)
++EXPORT int lxi_discover(lxi_info_t *info, int timeout, lxi_discover_t type, void *pvUser)
+ {
+     switch (type)
+     {
+         case DISCOVER_VXI11:
+-            vxi11_discover(info, timeout);
++            vxi11_discover(info, timeout, pvUser);
+             break;
+         case DISCOVER_MDNS:
+-            mdns_discover(info, timeout);
++            mdns_discover(info, timeout, pvUser);
+             break;
+         default:
+             error_printf("Unknown discover type (%d)\n", type);
+diff -uNr liblxi-1.13/src/mdns.c liblxi-1.13_patched/src/mdns.c
+--- liblxi-1.13/src/mdns.c	2018-02-02 14:06:05.000000000 +0100
++++ liblxi-1.13_patched/src/mdns.c	2019-09-24 14:40:24.051048264 +0200
+@@ -35,11 +35,11 @@
+ #include "avahi.h"
+ #endif
+ 
+-int mdns_discover(lxi_info_t *info, int timeout)
++int mdns_discover(lxi_info_t *info, int timeout, void *pvUser)
+ {
+ 
+ #ifdef HAVE_AVAHI
+-    avahi_discover(info, timeout);
++    avahi_discover(info, timeout, pvUser);
+ #endif
+ 
+     return 0;
+diff -uNr liblxi-1.13/src/vxi11.c liblxi-1.13_patched/src/vxi11.c
+--- liblxi-1.13/src/vxi11.c	2018-03-24 12:47:33.000000000 +0100
++++ liblxi-1.13_patched/src/vxi11.c	2019-09-24 14:39:21.285538716 +0200
+@@ -327,7 +327,7 @@
+     return -1;
+ }
+ 
+-static int discover_devices(struct sockaddr_in *broadcast_addr, lxi_info_t *info, int timeout)
++static int discover_devices(struct sockaddr_in *broadcast_addr, lxi_info_t *info, int timeout, void *pvUser)
+ {
+     int sockfd;
+     struct sockaddr_in send_addr;
+@@ -396,7 +396,7 @@
+             {
+                 // Notify device found via callback
+                 if (info->device != NULL)
+-                    info->device(address, id);
++                    info->device(address, id, pvUser);
+             }
+         }
+     } while (count > 0);
+@@ -410,7 +410,7 @@
+     return -1;
+ }
+ 
+-int vxi11_discover(lxi_info_t *info, int timeout)
++int vxi11_discover(lxi_info_t *info, int timeout, void *pvUser)
+ {
+     struct sockaddr_in *broadcast_addr;
+     struct ifaddrs *ifap;
+@@ -429,10 +429,10 @@
+ 
+                 // Notify current broadcast address and network interface via callback
+                 if (info->broadcast != NULL)
+-                    info->broadcast(inet_ntoa(broadcast_addr->sin_addr), ifap_p->ifa_name);
++                    info->broadcast(inet_ntoa(broadcast_addr->sin_addr), ifap_p->ifa_name, pvUser);
+ 
+                 // Find VXI11 devices via broadcast address
+-                status = discover_devices(broadcast_addr, info, timeout);
++                status = discover_devices(broadcast_addr, info, timeout, pvUser);
+ 
+             }
+             ifap_p = ifap_p->ifa_next;

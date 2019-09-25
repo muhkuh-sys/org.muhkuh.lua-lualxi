@@ -122,19 +122,19 @@ if tPlatform['host_distribution_id'] == 'ubuntu':
             ):
                 raise Exception('The target Ubuntu platform must match the build host.')
 
-            # Check for all system dependencies.
-            astrDeb = [
-                'libudev-dev'
-            ]
-            astrInstall = []
-            for strDeb in astrDeb:
-                strDpkgStatus = subprocess.check_output("dpkg-query -W -f='${Status}' %s || echo 'unknown'" % strDeb, shell=True)
-                print('Check for %s = %s' % (strDeb, strDpkgStatus))
-                if strDpkgStatus != 'install ok installed':
-                    astrInstall.append(strDeb)
-            if len(astrInstall) != 0:
-                subprocess.check_call('sudo apt-get update --assume-yes', shell=True)
-                subprocess.check_call('sudo apt-get install --assume-yes %s' % ' '.join(astrInstall), shell=True)
+#            # Check for all system dependencies.
+#            astrDeb = [
+#                'libudev-dev'
+#            ]
+#            astrInstall = []
+#            for strDeb in astrDeb:
+#                strDpkgStatus = subprocess.check_output("dpkg-query -W -f='${Status}' %s || echo 'unknown'" % strDeb, shell=True)
+#                print('Check for %s = %s' % (strDeb, strDpkgStatus))
+#                if strDpkgStatus != 'install ok installed':
+#                    astrInstall.append(strDeb)
+#            if len(astrInstall) != 0:
+#                subprocess.check_call('sudo apt-get update --assume-yes', shell=True)
+#                subprocess.check_call('sudo apt-get install --assume-yes %s' % ' '.join(astrInstall), shell=True)
 
             astrCMAKE_COMPILER = []
             astrCMAKE_PLATFORM = [

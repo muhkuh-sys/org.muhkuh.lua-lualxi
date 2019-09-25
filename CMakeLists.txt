@@ -1,6 +1,5 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
-PROJECT(lualxi
-        VERSION 1.0.0)
+PROJECT("lualxi")
 
 #-----------------------------------------------------------------------------
 #
@@ -23,14 +22,9 @@ INCLUDE(cmake/muhkuh_installation_folders.cmake)
 # Python is used for the firmware build script and some test scripts.
 FIND_PACKAGE(PythonInterp 2.7 REQUIRED)
 
-# Filter the jonchki configurations.
-CONFIGURE_FILE(lualxi/installer/lua${BUILDCFG_LUA_VERSION}/lualxi.xml
-               ${CMAKE_CURRENT_BINARY_DIR}/lua${BUILDCFG_LUA_VERSION}-lualxi-${PROJECT_VERSION}.xml
-               @ONLY)
+# Swig builds the wrapper.
+FIND_PACKAGE(SWIG REQUIRED)
 
-
-IF( NOT BUILDCFG_ONLY_JONCHKI_CFG STREQUAL "ON" )
-	ADD_SUBDIRECTORY(lualxi)
-ENDIF( NOT BUILDCFG_ONLY_JONCHKI_CFG STREQUAL "ON" )
+ADD_SUBDIRECTORY(lualxi)
 
 #-----------------------------------------------------------------------------
