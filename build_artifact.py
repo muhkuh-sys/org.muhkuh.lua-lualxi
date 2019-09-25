@@ -91,12 +91,13 @@ if tPlatform['host_distribution_id'] == 'ubuntu':
                 if os.path.exists(strPath) is not True:
                     os.makedirs(strPath)
 
-            packagesPath = os.path.join(strCfg_workingFolder, 'packages')
-            os.chdir(packagesPath)
-            subProcessPath = os.path.join(strCfg_projectFolder, 'cmake', 'tools')
-            subProcessCall = '%s/get_dependencies.sh libudev-dev:arm64' % subProcessPath
-            print(subProcessCall)
-            subprocess.check_call(subProcessCall, shell=True)
+#            packagesPath = os.path.join(strCfg_workingFolder, 'packages')
+#            os.chdir(packagesPath)
+#            subProcessPath = os.path.join(strCfg_projectFolder, 'cmake', 'tools')
+#            subProcessCall = '%s/get_dependencies.sh libudev-dev:arm64' % subProcessPath
+#            print(subProcessCall)
+#            subprocess.check_call(subProcessCall, shell=True)
+
             os.chdir(strCfg_workingFolder)
             astrCMAKE_COMPILER = [
                 '-DCMAKE_TOOLCHAIN_FILE=%s/cmake/toolchainfiles/toolchain_ubuntu_arm64.cmake' % strCfg_projectFolder
