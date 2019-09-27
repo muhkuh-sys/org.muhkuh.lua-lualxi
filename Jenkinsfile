@@ -27,7 +27,7 @@ node {
                 ])
 
                 /* Build the project. */
-                sh "bash .build '${atEntry[0]}' '${atEntry[1]}' '${atEntry[2]}'"
+                sh "/usr/bin/python2.7 build_artifact.py ${atEntry[0]} ${atEntry[1]} ${atEntry[2]}"
 
                 /* Archive all artifacts. */
                 archiveArtifacts artifacts: "${ARTIFACTS_PATH}/*.tar.xz,${ARTIFACTS_PATH}/*.xml,${ARTIFACTS_PATH}/*.hash,${ARTIFACTS_PATH}/*.pom"
