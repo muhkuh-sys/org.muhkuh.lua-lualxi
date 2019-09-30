@@ -1,0 +1,41 @@
+SCPI Befehle für Fertigungstest
+
+
+
+DMM Keysight
+######################################################################################################
+ROUTe:TERMinals?			Zeigt an welche Eingangsanschlüsse FRONt/REAR verwendet werden
+
+CALCulate:CLEar[:IMMediate]		Löscht alle Grenzen, Histogrammdaten, Statistiken und Messungen
+
+READ?					Ließt aktuellen Messwert aus Ausgangsbuffer
+
+CONFigure				Konfiguration der Messungen
+CONFigure:CURRent:{AC|DC}
+CONFigure:[VOLTage]:{AC|DC}
+CONFigure[:VOLTage][:DC]:RATio
+
+INITiate				Wechselt den Status des Trigger-Systems von „inaktiv“ auf „Warten-auf-Trigger“ und löscht die vorhergehende Messreihe aus dem Messwertspeicher.
+					Die Messungen beginnen, wenn die angegebenen Triggerbedingungen nach Eingang des Befehls INITiate erfüllt sind.
+					Schneller als der READ? command.
+
+FETCh?					Wartet auf Abschluss der Messungen und kopiert alle verfügbaren Messungen in den Ausgangspuffer des Geräts. 
+					Die Messwerte bleiben im Messwertspeicher.
+
+MEASure[:VOLTage]:{AC|DC}?		Stellt für Wechsel- oder Gleichspannungsmessungen alle Mess- und Triggerparameter auf ihren jewelligen Standardwert ein und löst eine Messung direkt aus.
+					Die Ergebnisse werden direkt an den Ausgabepuffer des Geräts gesendet.
+
+MEASure:CURRent:{AC|DC}?		Siehe MEASure[:VOLTage] nur für Strom
+
+
+
+Rigol Labornetzteil
+######################################################################################################
+OUTPut:RANGe {P20V|P40V|LOW|HIGH}	Select the current range of the output
+
+OUTPut:SENSe [CH1|CH2|CH3,]{ON|OFF}	Enable/Disable the Sense function of the channel
+
+APPLy [<volt>|MINimum|MAXimum|DEF[,<curr>|MINimum|MAXimum|DEF]]		Set the voltage/current of the channel
+
+:OUTPut[:STATe] [CH1|CH2|CH3,]{ON|OFF}	Enable or disable the output of the specified channel
+:OUTPut[:STATe]? [CH1|CH2|CH3]
