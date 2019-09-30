@@ -1,6 +1,6 @@
 diff -uNr liblxi-1.13/ltmain.sh liblxi-1.13_patched/ltmain.sh
 --- liblxi-1.13/ltmain.sh	2018-03-24 12:45:07.000000000 +0100
-+++ liblxi-1.13_patched/ltmain.sh	2019-09-27 14:49:59.948268164 +0200
++++ liblxi-1.13_patched/ltmain.sh	2019-09-30 17:36:37.220889856 +0200
 @@ -5553,7 +5553,7 @@
  #define STREQ(s1, s2) (strcmp ((s1), (s2)) == 0)
  
@@ -20,8 +20,8 @@ diff -uNr liblxi-1.13/ltmain.sh liblxi-1.13_patched/ltmain.sh
  # define stat    _stat
  # define chmod   _chmod
 diff -uNr liblxi-1.13/src/include/lxi.h liblxi-1.13_patched/src/include/lxi.h
---- liblxi-1.13/src/include/lxi.h	2019-09-27 14:00:16.372534823 +0200
-+++ liblxi-1.13_patched/src/include/lxi.h	2019-09-27 14:02:07.707541631 +0200
+--- liblxi-1.13/src/include/lxi.h	2019-09-30 17:36:24.228436570 +0200
++++ liblxi-1.13_patched/src/include/lxi.h	2019-09-30 17:36:37.220889856 +0200
 @@ -40,9 +40,9 @@
  
  typedef struct
@@ -36,8 +36,8 @@ diff -uNr liblxi-1.13/src/include/lxi.h liblxi-1.13_patched/src/include/lxi.h
  
  typedef enum
 diff -uNr liblxi-1.13/src/lxi.c liblxi-1.13_patched/src/lxi.c
---- liblxi-1.13/src/lxi.c	2019-09-27 14:00:16.372534823 +0200
-+++ liblxi-1.13_patched/src/lxi.c	2019-09-27 14:10:25.736219116 +0200
+--- liblxi-1.13/src/lxi.c	2019-09-30 17:36:24.228436570 +0200
++++ liblxi-1.13_patched/src/lxi.c	2019-09-30 17:36:37.220889856 +0200
 @@ -49,6 +49,12 @@
  {
      int i;
@@ -53,7 +53,7 @@ diff -uNr liblxi-1.13/src/lxi.c liblxi-1.13_patched/src/lxi.c
      {
 diff -uNr liblxi-1.13/src/tcp.c liblxi-1.13_patched/src/tcp.c
 --- liblxi-1.13/src/tcp.c	2018-03-22 20:35:11.000000000 +0100
-+++ liblxi-1.13_patched/src/tcp.c	2019-09-27 13:47:41.565861836 +0200
++++ liblxi-1.13_patched/src/tcp.c	2019-09-30 17:36:37.220889856 +0200
 @@ -32,10 +32,15 @@
  #include <stdlib.h>
  #include <string.h>
@@ -117,8 +117,8 @@ diff -uNr liblxi-1.13/src/tcp.c liblxi-1.13_patched/src/tcp.c
          return bytes_received;
      }
 diff -uNr liblxi-1.13/src/vxi11.c liblxi-1.13_patched/src/vxi11.c
---- liblxi-1.13/src/vxi11.c	2019-09-27 14:00:16.372534823 +0200
-+++ liblxi-1.13_patched/src/vxi11.c	2019-09-27 14:03:29.401696779 +0200
+--- liblxi-1.13/src/vxi11.c	2019-09-30 17:36:24.228436570 +0200
++++ liblxi-1.13_patched/src/vxi11.c	2019-09-30 17:38:03.979871607 +0200
 @@ -32,11 +32,18 @@
  #include <stdlib.h>
  #include <stdbool.h>
@@ -152,66 +152,68 @@ diff -uNr liblxi-1.13/src/vxi11.c liblxi-1.13_patched/src/vxi11.c
      link_params.lockDevice = 0; // No lock
      link_params.lock_timeout = 0;
  
-@@ -410,6 +417,66 @@
+@@ -410,6 +417,68 @@
      return -1;
  }
  
 +#if defined(__MINGW32__) || defined(__MINGW64__)
 +int vxi11_discover(lxi_info_t *info, int timeout, void *pvUser)
 +{
-+    DWORD dwResult;
-+    MIB_IPADDRTABLE *ptIpAddrTable;
-+    DWORD dwIpAddrTableSizeInBytes;
-+    int iNameSize;
-+    DWORD dwAdapterIndex;
-+    DWORD dwCnt;
-+    DWORD dwEnd;
-+    unsigned long ulBroadcastAddress;
++    SOCKET tSock;
++    INTERFACE_INFO atIfList[256];
++    int iResult;
++    unsigned long ulListSize;
++    unsigned long ulElements;
++    INTERFACE_INFO *ptCnt;
++    INTERFACE_INFO *ptEnd;
++    ULONG ulFlags;
++    u_long ulIpAddress;
++    u_long ulIpNetmask;
++    u_long ulIpBroadCast;
 +    struct sockaddr_in tBroadcastAddr;
 +    char acAdapterName[64];
 +
 +
-+    /* Get the number of interfaces. */
-+    ptIpAddrTable = (MIB_IPADDRTABLE *)malloc(sizeof(MIB_IPADDRTABLE));
-+    if( ptIpAddrTable!=NULL )
++    /* Open a socket. */
++    tSock = WSASocket(AF_INET, SOCK_DGRAM, 0, 0, 0, 0);
++    if( tSock!=SOCKET_ERROR )
 +    {
-+        dwResult = GetIpAddrTable(ptIpAddrTable, &dwIpAddrTableSizeInBytes, 0);
-+        if( dwResult==ERROR_INSUFFICIENT_BUFFER )
++        /* Get the number of interfaces. */
++        iResult = WSAIoctl(tSock, SIO_GET_INTERFACE_LIST, 0, 0, &atIfList, sizeof(atIfList), &ulListSize, 0, 0);
++        if( iResult==0 )
 +        {
-+            free(ptIpAddrTable);
-+            ptIpAddrTable = (MIB_IPADDRTABLE *)malloc(dwIpAddrTableSizeInBytes);
-+        }
-+    }
-+    if( ptIpAddrTable!=NULL )
-+    {
-+        dwResult = GetIpAddrTable(ptIpAddrTable, &dwIpAddrTableSizeInBytes, 0);
-+        if( dwResult==NO_ERROR )
-+        {
-+            dwCnt = 0;
-+            dwEnd = ptIpAddrTable->dwNumEntries;
-+            while( dwCnt<dwEnd )
++            ulElements = ulListSize / sizeof(INTERFACE_INFO);
++            ptCnt = atIfList;
++            ptEnd = atIfList + ulElements;
++            while( ptCnt<ptEnd )
 +            {
-+                dwAdapterIndex = ptIpAddrTable->table[dwCnt].dwIndex;
-+                ulBroadcastAddress = (unsigned long)(ptIpAddrTable->table[dwCnt].dwBCastAddr);
-+                snprintf(acAdapterName, sizeof(acAdapterName), "if%d", dwAdapterIndex);
-+                printf("%s: 0x%08x\n", acAdapterName, ulBroadcastAddress);
++                ulFlags = ptCnt->iiFlags;
++                if( (ulFlags&IFF_UP)!=0 && (ulFlags&IFF_BROADCAST)!=0 )
++                {
++                    ulIpAddress = ptCnt->iiAddress.AddressIn.sin_addr.S_un.S_addr;
++                    ulIpNetmask = ptCnt->iiNetmask.AddressIn.sin_addr.S_un.S_addr;
++                    ulIpBroadCast = ulIpAddress & ulIpNetmask | (ulIpNetmask ^ 0xffffffff);
 +
-+                tBroadcastAddr.sin_family = AF_INET;
-+                tBroadcastAddr.sin_port = htons(0);
-+                tBroadcastAddr.sin_addr.s_addr = ulBroadcastAddress;
++                    tBroadcastAddr.sin_family = ptCnt->iiAddress.AddressIn.sin_family;
++                    tBroadcastAddr.sin_port = 0;
++                    tBroadcastAddr.sin_addr.S_un.S_addr = ulIpBroadCast;
 +
-+                // Notify current broadcast address and network interface via callback
-+                if (info->broadcast != NULL)
-+                    info->broadcast(inet_ntoa(tBroadcastAddr.sin_addr), acAdapterName, pvUser);
++                    snprintf(acAdapterName, sizeof(acAdapterName), "if%s", inet_ntoa(ptCnt->iiAddress.AddressIn.sin_addr));
 +
-+                // Find VXI11 devices via broadcast address
-+                discover_devices(&tBroadcastAddr, info, timeout, pvUser);
++                    /* Notify current broadcast address and network interface via callback. */
++                    if (info->broadcast != NULL)
++                        info->broadcast(inet_ntoa(tBroadcastAddr.sin_addr), acAdapterName, pvUser);
 +
-+                ++dwCnt;
++                    /* Find VXI11 devices via broadcast address. */
++                    discover_devices(&tBroadcastAddr, info, timeout, pvUser);
++                }
++
++                ++ptCnt;
 +            }
 +        }
 +
-+        free(ptIpAddrTable);
++        /* Close the socket. */
++        closesocket(tSock);
 +    }
 +    return 0;
 +}
@@ -219,7 +221,7 @@ diff -uNr liblxi-1.13/src/vxi11.c liblxi-1.13_patched/src/vxi11.c
  int vxi11_discover(lxi_info_t *info, int timeout, void *pvUser)
  {
      struct sockaddr_in *broadcast_addr;
-@@ -442,3 +509,4 @@
+@@ -442,3 +511,4 @@
  
      return 0;
  }
