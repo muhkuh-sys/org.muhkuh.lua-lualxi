@@ -10,6 +10,9 @@ OPTION(BUILDCFG_ONLY_JONCHKI_CFG "Only build the jonchki configuration files. Th
 
 MESSAGE("BUILDCFG_ONLY_JONCHKI_CFG: ${BUILDCFG_ONLY_JONCHKI_CFG}")
 
+# Run the tests.
+ENABLE_TESTING()
+
 # Get the VCS version for the jonchki configuration.
 INCLUDE(cmake/version.cmake)
 
