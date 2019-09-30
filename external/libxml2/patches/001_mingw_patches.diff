@@ -1,0 +1,69 @@
+diff -uNr libxml2-2.9.9/include/libxml/xmlexports.h libxml2-2.9.9_patched/include/libxml/xmlexports.h
+--- libxml2-2.9.9/include/libxml/xmlexports.h	2018-11-13 14:45:27.000000000 +0100
++++ libxml2-2.9.9_patched/include/libxml/xmlexports.h	2019-09-27 14:54:06.333692033 +0200
+@@ -103,7 +103,7 @@
+ #endif
+ 
+ /* Windows platform with GNU compiler (Mingw) */
+-#if defined(_WIN32) && defined(__MINGW32__)
++#if defined(_WIN32) && (defined(__MINGW32__) || defined(__MINGW64__))
+   #undef XMLPUBFUN
+   #undef XMLPUBVAR
+   #undef XMLCALL
+diff -uNr libxml2-2.9.9/include/win32config.h libxml2-2.9.9_patched/include/win32config.h
+--- libxml2-2.9.9/include/win32config.h	2017-12-02 09:58:10.000000000 +0100
++++ libxml2-2.9.9_patched/include/win32config.h	2019-09-27 14:53:50.217335444 +0200
+@@ -97,7 +97,7 @@
+ #if _MSC_VER < 1500
+ #define vsnprintf(b,c,f,a) _vsnprintf(b,c,f,a)
+ #endif
+-#elif defined(__MINGW32__)
++#elif defined(__MINGW32__) || defined(__MINGW64__)
+ #define mkdir(p,m) _mkdir(p)
+ #endif
+ 
+diff -uNr libxml2-2.9.9/ltmain.sh libxml2-2.9.9_patched/ltmain.sh
+--- libxml2-2.9.9/ltmain.sh	2019-01-03 19:12:32.000000000 +0100
++++ libxml2-2.9.9_patched/ltmain.sh	2019-09-27 14:52:50.856023962 +0200
+@@ -5553,7 +5553,7 @@
+ #define STREQ(s1, s2) (strcmp ((s1), (s2)) == 0)
+ 
+ /* declarations of non-ANSI functions */
+-#if defined __MINGW32__
++#if defined(__MINGW32__) || defined(__MINGW64__)
+ # ifdef __STRICT_ANSI__
+ int _putenv (const char *);
+ # endif
+@@ -5574,7 +5574,7 @@
+ # define getcwd  _getcwd
+ # define putenv  _putenv
+ # define S_IXUSR _S_IEXEC
+-#elif defined __MINGW32__
++#elif defined(__MINGW32__) || defined(__MINGW64__)
+ # define setmode _setmode
+ # define stat    _stat
+ # define chmod   _chmod
+diff -uNr libxml2-2.9.9/testModule.c libxml2-2.9.9_patched/testModule.c
+--- libxml2-2.9.9/testModule.c	2016-06-07 12:04:14.000000000 +0200
++++ libxml2-2.9.9_patched/testModule.c	2019-09-27 14:53:13.732529007 +0200
+@@ -22,7 +22,7 @@
+ #ifdef _WIN32
+ #define MODULE_PATH "."
+ #include <stdlib.h> /* for _MAX_PATH */
+-#ifndef __MINGW32__
++#if !defined(__MINGW32__) && !defined(__MINGW64__)
+ #define PATH_MAX _MAX_PATH
+ #endif
+ #else
+diff -uNr libxml2-2.9.9/win32/VC10/config.h libxml2-2.9.9_patched/win32/VC10/config.h
+--- libxml2-2.9.9/win32/VC10/config.h	2017-12-02 09:58:10.000000000 +0100
++++ libxml2-2.9.9_patched/win32/VC10/config.h	2019-09-27 14:53:40.421118801 +0200
+@@ -96,7 +96,7 @@
+ #if _MSC_VER < 1500
+ #define vsnprintf(b,c,f,a) _vsnprintf(b,c,f,a)
+ #endif
+-#elif defined(__MINGW32__)
++#elif defined(__MINGW32__) || defined(__MINGW64__)
+ #define mkdir(p,m) _mkdir(p)
+ #endif
+ 
