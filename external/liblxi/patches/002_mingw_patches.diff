@@ -1,0 +1,226 @@
+diff -uNr liblxi-1.13/ltmain.sh liblxi-1.13_patched/ltmain.sh
+--- liblxi-1.13/ltmain.sh	2018-03-24 12:45:07.000000000 +0100
++++ liblxi-1.13_patched/ltmain.sh	2019-09-27 14:49:59.948268164 +0200
+@@ -5553,7 +5553,7 @@
+ #define STREQ(s1, s2) (strcmp ((s1), (s2)) == 0)
+ 
+ /* declarations of non-ANSI functions */
+-#if defined __MINGW32__
++#if defined(__MINGW32__) || defined(__MINGW64__)
+ # ifdef __STRICT_ANSI__
+ int _putenv (const char *);
+ # endif
+@@ -5574,7 +5574,7 @@
+ # define getcwd  _getcwd
+ # define putenv  _putenv
+ # define S_IXUSR _S_IEXEC
+-#elif defined __MINGW32__
++#elif defined(__MINGW32__) || defined(__MINGW64__)
+ # define setmode _setmode
+ # define stat    _stat
+ # define chmod   _chmod
+diff -uNr liblxi-1.13/src/include/lxi.h liblxi-1.13_patched/src/include/lxi.h
+--- liblxi-1.13/src/include/lxi.h	2019-09-27 14:00:16.372534823 +0200
++++ liblxi-1.13_patched/src/include/lxi.h	2019-09-27 14:02:07.707541631 +0200
+@@ -40,9 +40,9 @@
+ 
+ typedef struct
+ {
+-    void (*broadcast)(const char *address, const char *interface, void *pvUser);
+-    void (*device)(const char *address, const char *id, void *pvUser);
+-    void (*service)(const char *address, const char *id, const char *service, int port, void *pvUser);
++    void (*broadcast)(const char *pcAddress, const char *pcInterface, void *pvUser);
++    void (*device)(const char *pcAddress, const char *pcId, void *pvUser);
++    void (*service)(const char *pcAddress, const char *pcId, const char *pcService, int iPort, void *pvUser);
+ } lxi_info_t;
+ 
+ typedef enum
+diff -uNr liblxi-1.13/src/lxi.c liblxi-1.13_patched/src/lxi.c
+--- liblxi-1.13/src/lxi.c	2019-09-27 14:00:16.372534823 +0200
++++ liblxi-1.13_patched/src/lxi.c	2019-09-27 14:10:25.736219116 +0200
+@@ -49,6 +49,12 @@
+ {
+     int i;
+ 
++
++#if defined(__MINGW32__) || defined(__MINGW64__)
++    WSADATA wsaData;
++    WSAStartup(MAKEWORD(2, 2), &wsaData);
++#endif
++
+     // Initialize session structures
+     for (i = 0; i < SESSIONS_MAX; i++)
+     {
+diff -uNr liblxi-1.13/src/tcp.c liblxi-1.13_patched/src/tcp.c
+--- liblxi-1.13/src/tcp.c	2018-03-22 20:35:11.000000000 +0100
++++ liblxi-1.13_patched/src/tcp.c	2019-09-27 13:47:41.565861836 +0200
+@@ -32,10 +32,15 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <sys/types.h>
+-#include <sys/socket.h>
+-#include <netinet/in.h>
+-#include <arpa/inet.h>
+-#include <netdb.h>
++#if defined(__MINGW32__) || defined(__MINGW64__)
++#       include <ws2tcpip.h>
++#       define MSG_DONTWAIT 1
++#else
++#       include <sys/socket.h>
++#       include <netinet/in.h>
++#       include <arpa/inet.h>
++#       include <netdb.h>
++#endif
+ #include <unistd.h>
+ #include <errno.h>
+ #include "tcp.h"
+@@ -140,6 +145,9 @@
+     struct timeval tv;
+     fd_set rdfs;
+     int n = 0, bytes_received = 0;
++#if defined(__MINGW32__) || defined(__MINGW64__)
++    int iMode;
++#endif
+ 
+     tcp_data_t *tcp_data = (tcp_data_t *) data;
+ 
+@@ -156,6 +164,23 @@
+     else if (status)
+     {
+         // Receive until all data is received
++#if defined(__MINGW32__) || defined(__MINGW64__)
++        iMode = flags;
++        ioctlsocket(tcp_data->server_socket, FIONBIO, &iMode);
++
++        do
++        {
++            n = recv(tcp_data->server_socket, message + n, length, 0);
++            if (n < 0)
++                break;
++            length -= n;
++            bytes_received += n;
++        }
++        while (n > 0);
++
++        iMode = 0;
++        ioctlsocket(tcp_data->server_socket, FIONBIO, &iMode);
++#else
+         do
+         {
+             n = recv(tcp_data->server_socket, message + n, length, flags);
+@@ -165,6 +190,7 @@
+             bytes_received += n;
+         }
+         while (n > 0);
++#endif
+ 
+         return bytes_received;
+     }
+diff -uNr liblxi-1.13/src/vxi11.c liblxi-1.13_patched/src/vxi11.c
+--- liblxi-1.13/src/vxi11.c	2019-09-27 14:00:16.372534823 +0200
++++ liblxi-1.13_patched/src/vxi11.c	2019-09-27 14:03:29.401696779 +0200
+@@ -32,11 +32,18 @@
+ #include <stdlib.h>
+ #include <stdbool.h>
+ #include <string.h>
+-#include <sys/socket.h>
+-#include <netinet/in.h>
+-#include <net/if.h>
+-#include <arpa/inet.h>
+-#include <ifaddrs.h>
++#if defined(__MINGW32__) || defined(__MINGW64__)
++#       include <ws2tcpip.h>
++#       define _POSIX_SOURCE
++#       include <unistd.h>
++#       include <iphlpapi.h>
++#else
++#       include <sys/socket.h>
++#       include <netinet/in.h>
++#       include <net/if.h>
++#       include <arpa/inet.h>
++#       include <ifaddrs.h>
++#endif
+ #include <rpc/rpc.h>
+ #include <libxml/xmlmemory.h>
+ #include <libxml/parser.h>
+@@ -77,7 +84,7 @@
+         goto error_client;
+ 
+     // Set up link
+-    link_params.clientId = (unsigned long) vxi11_data->rpc_client;
++    link_params.clientId = (ptrdiff_t) vxi11_data->rpc_client;
+     link_params.lockDevice = 0; // No lock
+     link_params.lock_timeout = 0;
+ 
+@@ -410,6 +417,66 @@
+     return -1;
+ }
+ 
++#if defined(__MINGW32__) || defined(__MINGW64__)
++int vxi11_discover(lxi_info_t *info, int timeout, void *pvUser)
++{
++    DWORD dwResult;
++    MIB_IPADDRTABLE *ptIpAddrTable;
++    DWORD dwIpAddrTableSizeInBytes;
++    int iNameSize;
++    DWORD dwAdapterIndex;
++    DWORD dwCnt;
++    DWORD dwEnd;
++    unsigned long ulBroadcastAddress;
++    struct sockaddr_in tBroadcastAddr;
++    char acAdapterName[64];
++
++
++    /* Get the number of interfaces. */
++    ptIpAddrTable = (MIB_IPADDRTABLE *)malloc(sizeof(MIB_IPADDRTABLE));
++    if( ptIpAddrTable!=NULL )
++    {
++        dwResult = GetIpAddrTable(ptIpAddrTable, &dwIpAddrTableSizeInBytes, 0);
++        if( dwResult==ERROR_INSUFFICIENT_BUFFER )
++        {
++            free(ptIpAddrTable);
++            ptIpAddrTable = (MIB_IPADDRTABLE *)malloc(dwIpAddrTableSizeInBytes);
++        }
++    }
++    if( ptIpAddrTable!=NULL )
++    {
++        dwResult = GetIpAddrTable(ptIpAddrTable, &dwIpAddrTableSizeInBytes, 0);
++        if( dwResult==NO_ERROR )
++        {
++            dwCnt = 0;
++            dwEnd = ptIpAddrTable->dwNumEntries;
++            while( dwCnt<dwEnd )
++            {
++                dwAdapterIndex = ptIpAddrTable->table[dwCnt].dwIndex;
++                ulBroadcastAddress = (unsigned long)(ptIpAddrTable->table[dwCnt].dwBCastAddr);
++                snprintf(acAdapterName, sizeof(acAdapterName), "if%d", dwAdapterIndex);
++                printf("%s: 0x%08x\n", acAdapterName, ulBroadcastAddress);
++
++                tBroadcastAddr.sin_family = AF_INET;
++                tBroadcastAddr.sin_port = htons(0);
++                tBroadcastAddr.sin_addr.s_addr = ulBroadcastAddress;
++
++                // Notify current broadcast address and network interface via callback
++                if (info->broadcast != NULL)
++                    info->broadcast(inet_ntoa(tBroadcastAddr.sin_addr), acAdapterName, pvUser);
++
++                // Find VXI11 devices via broadcast address
++                discover_devices(&tBroadcastAddr, info, timeout, pvUser);
++
++                ++dwCnt;
++            }
++        }
++
++        free(ptIpAddrTable);
++    }
++    return 0;
++}
++#else
+ int vxi11_discover(lxi_info_t *info, int timeout, void *pvUser)
+ {
+     struct sockaddr_in *broadcast_addr;
+@@ -442,3 +509,4 @@
+ 
+     return 0;
+ }
++#endif
