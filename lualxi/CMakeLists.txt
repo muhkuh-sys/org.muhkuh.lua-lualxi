@@ -2,7 +2,12 @@ PROJECT("org.muhkuh.lua-lualxi"
         VERSION 1.0.0)
 
 # Filter the jonchki configurations.
-CONFIGURE_FILE(installer/lua${BUILDCFG_LUA_VERSION}/lualxi.xml
+IF(WIN32)
+	SET(JONCHKI_CFG_FILE "installer/lua${BUILDCFG_LUA_VERSION}/lualxi_windows.xml")
+ELSE(WIN32)
+	SET(JONCHKI_CFG_FILE "installer/lua${BUILDCFG_LUA_VERSION}/lualxi.xml")
+ENDIF(WIN32)
+CONFIGURE_FILE(${JONCHKI_CFG_FILE}
                ${CMAKE_BINARY_DIR}/lua${BUILDCFG_LUA_VERSION}-lualxi-${PROJECT_VERSION}.xml
                @ONLY)
 
@@ -22,10 +27,7 @@ IF((${BUILDCFG_ONLY_JONCHKI_CFG} STREQUAL "OFF"))
 
 	SET(net.zlib-zlib_DIR "${CMAKE_BINARY_DIR}/build_requirements/jonchki/install/dev/cmake")
 	FIND_PACKAGE(net.zlib-zlib REQUIRED)
-	GET_TARGET_PROPERTY(ZLIB_LIBRARIES net.zlib-zlib::zlibstatic LOCATION)
-	SET(ZLIB_INCLUDE_DIR ${net.zlib-zlib_INCLUDE_DIR})
-	SET(ZLIB_FOUND TRUE)
-	MESSAGE("Found ZLIB: ${ZLIB_LIBRARIES} (found version ${net.zlib-zlib_VERSION})")
+	MESSAGE("Found ZLIB ${net.zlib-zlib_VERSION}")
 
 	SET(LIBLXI_INCLUDE_DIR "${CMAKE_BINARY_DIR}/../external/liblxi/install/include")
 	SET(LIBLXI_LIB "${CMAKE_BINARY_DIR}/../external/liblxi/install/lib/liblxi.a")
@@ -33,10 +35,21 @@ IF((${BUILDCFG_ONLY_JONCHKI_CFG} STREQUAL "OFF"))
 	SET(LIBXML2_LIB "${CMAKE_BINARY_DIR}/../external/install/lib/libxml2.a")
 	SET(LIBLZMA_LIB "${CMAKE_BINARY_DIR}/../external/install/lib/liblzma.a")
 
+	IF(WIN32)
+		SET(liboncrpc_DIR "${CMAKE_BINARY_DIR}/build_requirements/jonchki/install/dev/cmake")
+		MESSAGE("liboncrpc_DIR = ${liboncrpc_DIR}")
+		FIND_PACKAGE(liboncrpc REQUIRED)
+		MESSAGE("Found liboncrpc ${liboncrpc_VERSION}")
+	ENDIF(WIN32)
+
 	SET_SOURCE_FILES_PROPERTIES(lualxi.i PROPERTIES CPLUSPLUS ON)
 	SET_SOURCE_FILES_PROPERTIES(lualxi.i PROPERTIES SWIG_FLAGS "")
 	SWIG_ADD_MODULE(TARGET_lualxi lua lualxi.i wrapper.cpp)
-	SWIG_LINK_LIBRARIES(TARGET_lualxi ${LUA_LIBRARIES} ${LIBLXI_LIB} ${LIBXML2_LIB} ${LIBLZMA_LIB} ${ZLIB_LIBRARIES})
+	if(WIN32)
+		SWIG_LINK_LIBRARIES(TARGET_lualxi ${LUA_LIBRARIES} ${LIBLXI_LIB} liboncrpc::TARGET_oncrpc ${LIBXML2_LIB} ${LIBLZMA_LIB} net.zlib-zlib::zlibstatic)
+	ELSE(WIN32)
+		SWIG_LINK_LIBRARIES(TARGET_lualxi ${LUA_LIBRARIES} ${LIBLXI_LIB} ${LIBXML2_LIB} ${LIBLZMA_LIB} net.zlib-zlib::zlibstatic)
+	ENDIF(WIN32)
 	ADD_DEPENDENCIES(TARGET_lualxi TARGET_swigluarun)
 
 	TARGET_INCLUDE_DIRECTORIES(TARGET_lualxi
