@@ -1,0 +1,11 @@
+diff -uNr liblxi-1.13/src/vxi11.c liblxi-1.13_patched/src/vxi11.c
+--- liblxi-1.13/src/vxi11.c	2019-09-30 14:34:36.914789937 +0200
++++ liblxi-1.13_patched/src/vxi11.c	2019-09-30 14:34:54.231204652 +0200
+@@ -28,6 +28,7 @@
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
++#include <stddef.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <stdbool.h>
