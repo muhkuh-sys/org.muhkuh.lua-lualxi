@@ -1,5 +1,5 @@
 PROJECT("org.muhkuh.lua-lualxi"
-        VERSION 1.0.0)
+        VERSION 1.0.1)
 
 # Filter the jonchki configurations.
 IF(WIN32)
